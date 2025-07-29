@@ -1,0 +1,103 @@
+-- creating the database
+CREATE database pizza;
+
+--creating the table to load the data in
+CREATE TABLE pizza_sales (
+    pizza_id NUMERIC,
+    order_id NUMERIC,
+    pizza_name_id VARCHAR(50),
+    quantity NUMERIC,
+    order_date TEXT,
+    order_time TEXT,
+    unit_price NUMERIC,
+    total_price NUMERIC,
+    pizza_size TEXT,
+    pizza_category TEXT,
+    pizze_ingredients TEXT,
+    pizza_name TEXT
+);
+
+/*  this code runned inside PSQL in pgAdmin to load the data from the csv file into the table
+\COPY pizza_sales FROM 'C:\Users\Lenovo\Pizza Project\pizza_sales.csv' DELIMITER ',' CSV HEADER; */
+
+SELECT * FROM pizza_sales LIMIT 10;
+
+/* this query to convert from TEXT into DATE/TIME, since DATE IS formatted as D-M-Y in the dataset*/
+ALTER TABLE pizza_sales
+ALTER COLUMN order_date TYPE DATE
+USING TO_DATE(order_date, 'DD-MM-YYYY'),
+ALTER COLUMN order_time TYPE TIME
+USING TO_TIMESTAMP(order_time, 'HH24:MI:SS')::time;
+
+-- identifying top 5 selling pizza by quantities sold
+CREATE VIEW pizza_by_quantities_sold AS
+SELECT pizza_name, SUM(quantity) as quantities_sold
+FROM pizza_sales
+GROUP BY pizza_name
+ORDER BY quantities_sold DESC
+LIMIT 5;
+
+--identifying peak days
+CREATE VIEW peak_days AS
+SELECT TO_CHAR(order_date,'Day') as order_day, 
+SUM(total_price) as price
+FROM pizza_sales
+GROUP BY order_day
+ORDER BY price DESC;
+
+
+-- dentifying Hourly order trends
+CREATE VIEW hourly_trend AS
+SELECT EXTRACT(HOUR FROM order_time) as order_hour, SUM(quantity) as quantities_sold
+FROM pizza_sales
+GROUP BY order_hour
+ORDER BY order_hour;
+
+-- revenue by pizza category and size
+CREATE VIEW pizza_revenue_byCategory AS
+SELECT pizza_category, pizza_size, SUM(total_price) as revenue
+FROM pizza_sales
+GROUP BY pizza_category, pizza_size
+ORDER BY revenue DESC;
+
+-- worst performing pizzas by revenue
+CREATE VIEW worst_pizzas AS
+SELECT pizza_name, SUM(total_price) as revenue
+FROM pizza_sales
+GROUP BY pizza_name
+ORDER BY revenue
+LIMIT 10;
+
+-- average order price per size 
+CREATE VIEW avg_price_per_size AS
+SELECT pizza_size, AVG(order_total) AS avg_order_value
+FROM (
+    SELECT order_id, pizza_size, SUM(total_price) AS order_total
+    FROM pizza_sales
+    GROUP BY order_id, pizza_size
+) sub
+GROUP BY pizza_size
+ORDER BY avg_order_value DESC;
+
+-- monthly sales trend
+CREATE VIEW monthly_trends AS
+SELECT EXTRACT(MONTH FROM order_date) as order_month, SUM(total_price) as revenue
+FROM pizza_sales
+GROUP BY order_month
+ORDER BY order_month;
+
+
+-- order trend
+CREATE VIEW order_trend AS
+SELECT sum_quantity AS pizzas_per_order, COUNT(*) AS num_orders
+FROM (
+    SELECT order_id, SUM(quantity) as sum_quantity
+    FROM pizza_sales
+    GROUP BY order_id
+) sub
+GROUP BY sum_quantity
+ORDER BY num_orders DESC;
+ 
+
+
+
